@@ -1,0 +1,106 @@
+---
+title: "Evaluations_GenAI"
+output: html_document
+date: "2023-08-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Data
+
+
+```{r load Data}
+library(sjPlot)
+# Read human evaluations
+df_human = read.csv("evaluations.csv")
+
+# Read GPT evaluations
+df_gpt = read.csv("gpt_evaluations.csv")  # Assuming this is the filename
+
+# Merging the two dataframes on the 'id' column
+df = merge(df_human, df_gpt, by = "id")
+```
+
+## Human Ratings
+
+First we correlate each of the human ratings with each other. We are using Spearman correlations here. Ive pasted a quick overview of Spearman correlations below as a guide/refresher, feel free to skip if you already know whats going on 
+
+### Spearman's Rank Correlation
+
+Spearman's rank correlation is a non-parametric test that measures the strength and direction of the relationship between two variables. The value of this correlation is denoted by \( r_s \) (or sometimes *rho*) and ranges between -1 and 1.
+
+- **\( r_s = 1 \):** A perfect positive correlation, meaning as one variable increases, the other increases at the exact same rate.
+- **\( r_s = -1 \):** A perfect negative correlation, meaning as one variable increases, the other decreases at the exact same rate.
+- **\( r_s = 0 \):** No correlation, meaning there is no apparent relationship between the variables.
+
+### Interpreting the Correlation Coefficient
+
+- **Strong Positive Correlation** (\( r_s > 0.7 \)): As one variable increases, the other variable tends to increase.
+- **Moderate Positive Correlation** (\( 0.3 < r_s \leq 0.7 \)): There's a relationship, but it's not as strong or consistent.
+- **Weak or No Correlation** (\( -0.3 \leq r_s \leq 0.3 \)): There might be a relationship, but it's weak or non-existent.
+- **Moderate Negative Correlation** (\( -0.7 \leq r_s < -0.3 \)): As one variable increases, the other tends to decrease, but not as strongly or consistently.
+- **Strong Negative Correlation** (\( r_s < -0.7 \)): As one variable increases, the other variable tends to decrease consistently.
+
+**Note** In work with humans, greater than .7 is typically considered very high - especially when the number of observations are low, as we have. The above boundaries should be taken with a hefty grain of salt in the kind of work we would be doing. I typically ignore the boundaries set above, and consider signficance (see below). Statasticians typically make these rules in perfect environments, rather than with the noise of the real world. 
+
+### Statistical Significance
+
+When evaluating the Spearman's correlation, we often want to know if the correlation we've observed is statistically significant, meaning that it is unlikely to have occurred by random chance.
+
+To determine this, a p-value is often calculated. Here's how to interpret it:
+
+- **p < 0.05**: This is commonly considered evidence that the correlation is significant. The relationship between the variables is likely not due to random chance.
+- **p ≥ 0.05**: This suggests that the correlation is not statistically significant, meaning that the relationship observed might be due to random chance.
+
+### Example
+
+Imagine you get \( r_s = 0.65 \) with a p-value of 0.03.
+
+- The \( r_s \) value suggests a moderate positive correlation between the two variables.
+- The p-value of 0.03 indicates that this correlation is statistically significant at the 0.05 level.
+
+### Back to our data
+
+```{r pressure, }
+sjPlot::tab_corr(df[c("hr_relevance", "hr_clarity", "hr_creativity", "hr_complexity")], corr.method = "spearman", triangle = "upper")
+```
+
+I note a very high correlation in the human ratings between complexity and creativity - implying that these two things might be measuring the same thing 
+
+## GPT Ratings
+
+Now we do the same analysis with the gpt ratings 
+
+```{r}
+
+sjPlot::tab_corr(df[c("relevance", "clarity", "creativity", "complexity")], corr.method = "spearman", triangle = "upper")
+```
+
+The same relationship between complexity and creativity is observed (with lesser magnitude)
+which reinforces the notion that these two might be measuring the same thing. 
+
+
+Interestingly there is a significant negative relationship between creativity and relevant and clarity and complexity. 
+
+**Note** Clarity and complexity to me implies something we might need to alter in the prompt, and make sure that its explicit about complexity of the question rather than complexity of the language? This may be true of creativity and relevace also
+
+
+## Comparing Human to GPT
+
+Im not going to do a table for this one, as there is really only five numbers I care about. 
+
+```{r}
+cor.test(~ hr_relevance + relevance, data=df, method="spearman")
+cor.test(~ hr_complexity + complexity, data=df, method="spearman")
+cor.test(~ hr_clarity + clarity, data=df, method="spearman")
+cor.test(~ hr_creativity + creativity, data=df, method="spearman")
+cor.test(~ hr_score + score, data=df, method="spearman")
+
+
+```
+
+Here we start to come a little unstuck. Things are okay with complexity and creativity in terms of human agreement - but see earlier notes above. 
+
+Overall score doesnt look great in terms of agreement and it would be great to see relevance and clarity improve in overall agreement of scores.
